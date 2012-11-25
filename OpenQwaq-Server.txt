@@ -1,0 +1,152 @@
+#squeak
+sudo apt-get -y install squeak-image3.9
+
+#deadsnakes provides packages for python version no longer supported by
+#ubuntu
+
+sudo add-apt-repository ppa:fkrull/deadsnakes
+sudo apt-get update
+sudo apt-get -y install python2.4 python2.4-dev
+
+sudo apt-get -y install apache2
+sudo apt-get -y install gcc
+sudo apt-get -y install daemon
+sudo apt-get -y install subversion
+sudo apt-get -y install php5
+sudo apt-get -y install php-auth
+sudo apt-get -y install php5-mysql
+sudo apt-get -y install php5-odbc
+sudo apt-get -y install mysql-server
+sudo apt-get -y install libmyodbc
+#ln -s /usr/lib/x86_64-linux-gnu/odbc/libmyodbc.so /usr/lib/libmyodbc.so
+ln -s /usr/lib/i386-linux-gnu/odbc/libmyodbc.so /usr/lib/libmyodbc.so
+
+sudo a2enmod ssl
+sudo service apache2 restart
+
+sudo apt-get -y install postfix
+
+sudo apt-get -y install ntp
+sudo apt-get -y install vnc4server
+sudo apt-get -y install unixodbc
+sudo apt-get -y install unixodbc-dev
+sudo apt-get -y install stunnel4
+
+sudo groupadd -g 1234 openqwaq
+sudo useradd -g 1234 -G 1234 -u 1234 -c "OpenQwaq service user" -d /home/openqwaq -m -s /bin/bash openqwaq
+sudo passwd openqwaq
+#make the password openqwaq 
+sudo chmod 750 /home/openqwaq
+
+sudo /usr/sbin/visudo
+#add openqwaq ALL=(ALL:ALL) ALL
+#on the line below root ALL=(ALL:ALL) ALL
+
+su openqwaq
+#password is openqwaq
+cd /home/openqwaq
+svn co http://openqwaq.googlecode.com/svn/trunk/server
+
+sudo ln -s /home/openqwaq/server/etc/OpenQwaq-http.conf /etc/apache2/conf.d
+#replace www-data with openqwaq in /etc/apache2/envvars
+sudo a2enmod proxy
+sudo a2enmod proxy_http
+sudo a2enmod rewrite
+sudo a2enmod auth_digest
+sudo service apache2 restart
+#check http://localhost/clients is successful
+
+sudo /usr/sbin/mysqld start
+sudo /usr/bin/mysqladmin -u root -p password "openqwaq"
+cd /home/openqwaq/server/conf
+/usr/bin/mysql -uroot -popenqwaq -b < ./mysqlinit.sql
+sudo odbcinst -i -s -l -f ./OpenQwaqData.dsn.in
+sudo odbcinst -i -s -l -f ./OpenQwaqActivityLog.dsn.in
+sudo vi /etc/odbcinst.ini
+sudo cp ../etc/OpenQwaq-odbcinst.ini /etc/odbcinst.ini
+
+isql OpenQwaqData openqwaq openqwaq -b < ./OpenQwaqData.sql
+isql OpenQwaqActivityLog openqwaq openqwaq -b < ./OpenQwaqActivityLog.sql
+isql OpenQwaqData openqwaq openqwaq -b < ./default-servers.sql
+isql OpenQwaqData openqwaq openqwaq -b < ./default-visitor.sql
+
+#Verify mysql initialization by going to
+#http://localhost/admin
+#Ensure existence of default server in server tab
+#Ensure existence of default organization in org tab
+#Ensure existence of default user in user tab
+
+cd /home/openqwaq/server/apps/utils
+
+#there's a typo in /home/openqwaq/server/apps/scripts/qmount.sh
+#the line that contains "tilFiles=" needs to be changed to "utilFiles="
+sudo chmod +w /home/openqwaq/server/apps/scripts/qmount.sh
+#use sudo vi to inster the letter u and save the file
+sudo chmod -w /home/openqwaq/server/apps/scripts/qmount.sh
+sudo ./MakeWrappers.sh /home/openqwaq/server/apps/scripts/
+
+cd /home/openqwaq/server/mail_templates
+sudo ./fixlinks.sh hosted
+
+cp /home/openqwaq/server/conf/server.conf.in /home/openqwaq/server/conf/server.conf
+
+mkdir /home/openqwaq/realms
+mkdir /home/openqwaq/users
+mkdir /home/openqwaq/tmp
+mkdir /home/openqwaq/OpenQwaqApps
+
+cd /home/openqwaq/server/apps/chroot/OpenQwaqBin 
+chmod +x qstartup* xstartup 
+cd /home/openqwaq/server/apps/chroot/.vnc 
+chmod +x xstartup
+#Install Firefox, OpenOffice and Acrobat Reader
+ #   put Links from their bin files in /home/openqwaq/OpenQwaqApps/bin/
+  #  like
+   # ln -s /usr/bin/firefox /home/openqwaq/OpenQwaqApps/bin/
+
+cp /home/openqwaq/server/etc/forums.properties /home/openqwaq/realms/
+ln -s /home/openqwaq/server/system-resources/ /home/openqwaq/realms/
+sudo ln -s /home/openqwaq/server/etc/OpenQwaq /etc/init.d/
+sudo ln -s /home/openqwaq/server/etc/OpenQwaq-iptables /etc/init.d/
+sudo ln -s /home/openqwaq/server/etc/OpenQwaq-tunnel /etc/init.d/
+
+Changing the scripts with Ubuntu pathes
+    /home/openqwaq/server/etc/OpenQwaq
+    /home/openqwaq/server/etc/OpenQwaq-iptable
+    /home/openqwaq/server/etc/OpenQwaq-tunnel
+
+    change the path 
+    . /etc/rc.d/init.d/functions
+    in
+    . /lib/lsb/init-functions
+
+cd /home/openqwaq/server/etc/
+chmod 775 OpenQwaq
+chmod 775 OpenQwaq-iptables
+chmod 775 OpenQwaq-tunnel
+chmod 775 /home/openqwaq/server/foreign-client-proxy/LaunchProxy
+
+sudo chown -R openqwaq:openqwaq /home/openqwaq
+
+sudo service OpenQwaq start
+sudo service OpenQwaq-iptables start
+sudo service OpenQwaq-tunnel start
+
+sudo service postfix start
+
+sudo update-rc.d OpenQwaq enable 3 4 5
+sudo update-rc.d OpenQwaq-iptables defaults
+sudo update-rc.d OpenQwaq-tunnel defaults
+
+Goto: http://localhost/admin/serverconf.php?server=localhost
+    Configure SMTP opteions
+    Configure support and bug email
+
+sudo cp -R /home/openqwaq/server/etc/ld.so.conf.d/ /etc/
+cd /home/openqwaq/server/third-party/src/GPAC/
+#sudo ./run_me_build_mp4box.sh
+#fails with a compile error
+#must download latest source code for GPAC
+svn co https://gpac.svn.sourceforge.net/svnroot/gpac/trunk/gpac gpac
+#edit the run_me script and comment out the tar command
+sudo ./run_me_build_mp4box.sh
