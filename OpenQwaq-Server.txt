@@ -57,7 +57,7 @@ sudo service apache2 restart
 #check http://localhost/clients is successful
 
 sudo /usr/sbin/mysqld start
-sudo /usr/bin/mysqladmin -u root -p password "openqwaq"
+sudo /usr/bin/mysqladmin -u root password "openqwaq"
 cd /home/openqwaq/server/conf
 /usr/bin/mysql -uroot -popenqwaq -b < ./mysqlinit.sql
 sudo odbcinst -i -s -l -f ./OpenQwaqData.dsn.in
